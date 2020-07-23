@@ -5,13 +5,17 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.Observer
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.example.database.entity.News
 import com.example.network.controller.news.MultipleNewsResponse
 import com.example.network.controller.news.NewsResponse
 import com.example.news.R
 import com.example.news.util.BaseFragment
 import kotlinx.android.synthetic.main.fragment_lenta.*
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -42,25 +46,40 @@ class LentaFragment : BaseFragment() {
             ) {
                 println(response)
 
-                val body=response.body()
+                val body = response.body()
                 body?.let {
-                    val list = arrayListOf<NewsEntity>()
+                    val list = arrayListOf<News>()
                     for (x in it.articles) {
-                        list.add(
-                            NewsEntity(
-                                x.title?:"",
-                                x.url?:"",
-                                x.description?:"",
-                                x.author?:"",
-                                x.publishedAt?:"",
-                                x.source?.name?:"",
-                                x.urlToImage?:""
+                        val news =
+                            News(
+                                title = x.title ?: "",
+                                url = x.url ?: "",
+                                description = x.description ?: "",
+                                author = x.author ?: "",
+                                publishedAt = x.publishedAt ?: "",
+                                name = x.source?.name ?: "",
+                                urlToImage = x.urlToImage ?: ""
                             )
-                        )
-                    }
-                    adapter.setList(list)
-                }
 
+                        GlobalScope.launch {
+                            newsViewModel.insertNews(news)
+                        }
+                    }
+
+                }
+            }
+        })
+        GlobalScope.launch {
+            newsViewModel.allNews()
+        }
+
+        newsViewModel.allNews.observe(viewLifecycleOwner, object : Observer<List<News>> {
+            override fun onChanged(t: List<News>?) {
+                t?.let { list ->
+                    activity?.runOnUiThread {
+                        adapter.setNewsList(list)
+                    }
+                }
 
             }
 
